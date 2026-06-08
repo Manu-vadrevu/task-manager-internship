@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager Dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: #f3f4f6; color: #1f2937; padding: 2rem 1rem; }
+        .auth-container, .app-container { max-width: 500px; margin: 2rem auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .hidden { display: none !important; }
+        h2 { margin-bottom: 1.5rem; text-align: center; color: #111827; }
+        input, select { width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; }
+        button { width: 100%; padding: 0.75rem; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #1d4ed8; }
+        .task-form { display: flex; gap: 10px; margin-bottom: 1.5rem; }
+        .task-form input { margin-bottom: 0; }
+        .task-form button { width: auto; padding: 0 1.5rem; }
+        .task-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 0.5rem; }
+        .task-text { font-size: 1rem; }
+        .task-actions button { background: #ef4444; padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        .task-actions button:hover { background: #dc2626; }
+        .nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; }
+        .logout-btn { background: #6b7280; width: auto; padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+    <div id="authScreen" class="auth-container">
+        <h2 id="authTitle">Login to Task Manager</h2>
+        <input type="text" id="username" placeholder="Enter Username (any name works)">
+        <input type="password" id="password" placeholder="Enter Password">
+        <button id="authBtn" onclick="handleAuth()">Sign In</button>
+    </div>
+
+    <div id="appScreen" class="app-container hidden">
+        <div class="nav-header">
+            <h3>Welcome, <span id="userDisplay">User</span>!</h3>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <h2>My Tasks</h2>
+        
+        <div class="task-form">
+            <input type="text" id="taskInput" placeholder="Add a new operational task...">
+            <button onclick="addTask()">Add</button>
+        </div>
+
+        <div id="taskList"></div>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        function handleAuth() {
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value.trim();
+            if (user && pass) {
+                currentUser = user;
+                document.getElementById('userDisplay').innerText = user;
+                document.getElementById('authScreen').classList.add('hidden');
+                document.getElementById('appScreen').classList.remove('hidden');
+                fetchTasks();
+            } else {
+                alert("Please enter both username and password!");
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('authScreen').classList.remove('hidden');
+            document.getElementById('appScreen').classList.add('hidden');
+        }
+
+        // Connects to the Node/Express CRUD API
+        async function fetchTasks() {
+            const res = await fetch('/api/tasks');
+            const tasks = await res.json();
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = '';
+            
+            tasks.forEach(task => {
+                const div = document.createElement('div');
+                div.className = 'task-item';
+                div.innerHTML = `
+                    <span class="task-text">${task.text}</span>
+                    <div class="task-actions">
+                        <button onclick="deleteTask(${task.id})">Delete</button>
+                    </div>
+                `;
+                taskList.appendChild(div);
+            });
+        }
+
+        async function addTask() {
+            const input = document.getElementById('taskInput');
+            if (!input.value.trim()) return;
+
+            await fetch('/api/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: input.value })
+            });
+            input.value = '';
+            fetchTasks();
+        }
+
+        async function deleteTask(id) {
+            await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+            fetchTasks();
+        }
+    </script>
+</body>
+</html>
